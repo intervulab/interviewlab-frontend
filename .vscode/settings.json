@@ -1,0 +1,12 @@
+{
+  "explorer.fileNesting.enabled": true,
+  "explorer.fileNesting.expand": false,
+  "explorer.fileNesting.patterns": {
+    "package.json": "package-lock.json, pnpm-lock.yaml, yarn.lock, .npmrc",
+    "next.config.ts": "next-env.d.ts, components.json, postcss.config.mjs, eslint.config.mjs, .prettierrc",
+    "tsconfig.json": "tsconfig.tsbuildinfo",
+    ".env": ".env.example, .env.local, .env.development, .env.production",
+    "Dockerfile": "docker-compose.yml, .dockerignore",
+    "README.md": "AGENTS.md, CLAUDE.md"
+  }
+}

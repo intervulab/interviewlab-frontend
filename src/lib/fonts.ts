@@ -1,30 +1,18 @@
-import { Inter, Outfit, JetBrains_Mono } from "next/font/google";
+import { Space_Grotesk, Teko, JetBrains_Mono } from "next/font/google";
 
-/**
- * Primary font — Inter for UI text.
- * Clean, highly readable, designed for screens.
- */
-export const fontSans = Inter({
+export const fontSans = Space_Grotesk({
   subsets: ["latin"],
-  display: "swap",
   variable: "--font-sans",
+  weight: ["300", "400", "500", "600", "700"],
 });
 
-/**
- * Display font — Outfit for headings and hero sections.
- * Modern geometric sans-serif with personality.
- */
-export const fontDisplay = Outfit({
+export const fontDisplay = Teko({
   subsets: ["latin"],
-  display: "swap",
   variable: "--font-display",
+  weight: ["300", "400", "500", "600", "700"],
 });
 
-/**
- * Monospace font — JetBrains Mono for code blocks and technical content.
- */
 export const fontMono = JetBrains_Mono({
   subsets: ["latin"],
-  display: "swap",
   variable: "--font-mono",
 });

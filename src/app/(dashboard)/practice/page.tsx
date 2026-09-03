@@ -1,55 +1,71 @@
-import type { Metadata } from "next";
+"use client";
 
-export const metadata: Metadata = { title: "Practice" };
+import { TiltCard3D } from "@/components/shared/tilt-card-3d";
+import { MagneticButton } from "@/components/shared/magnetic-button";
 
 export default function PracticePage() {
   return (
-    <div className="animate-fade-in-up space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold font-[family-name:var(--font-display)]">Practice Mode</h1>
-        <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
-          Configure your practice session. Paste a job description for personalized questions.
+    <div className="animate-fade-in-up space-y-12 pb-12">
+      {/* ── HEADER ── */}
+      <div className="border-b border-[var(--color-border-subtle)] pb-8">
+        <h1 className="text-7xl lg:text-8xl font-black uppercase tracking-tighter font-[family-name:var(--font-display)] text-[var(--color-text-primary)]">
+          PRACTICE <span className="text-[var(--color-brand-400)]">CORE</span>
+        </h1>
+        <p className="mt-2 text-lg text-[var(--color-text-secondary)] font-mono uppercase tracking-widest font-bold">
+          &gt; CONFIGURE_SESSION // PASTE_JD_FOR_CALIBRATION
         </p>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Interview Type Selection */}
-        <div className="glass rounded-xl p-6 space-y-4">
-          <h2 className="text-lg font-semibold">Interview Type</h2>
-          <div className="grid grid-cols-2 gap-3">
+      <div className="grid gap-10 lg:grid-cols-2">
+        {/* ── INTERVIEW TYPE ── */}
+        <TiltCard3D className="p-8 border-[var(--color-border-default)]" glareColor="var(--color-brand-500)">
+          <h2 className="text-4xl font-bold uppercase font-[family-name:var(--font-display)] mb-6 text-[var(--color-text-primary)] tracking-tight">
+            Select Protocol
+          </h2>
+          <div className="grid grid-cols-2 gap-4">
             {[
-              { type: "Technical", emoji: "💻" },
-              { type: "Behavioral", emoji: "🗣️" },
-              { type: "System Design", emoji: "🏗️" },
-              { type: "HR Round", emoji: "🤝" },
+              { type: "Technical", icon: "💻", color: "var(--color-accent-400)" },
+              { type: "Behavioral", icon: "🗣️", color: "var(--color-brand-500)" },
+              { type: "System Design", icon: "🏗️", color: "var(--color-warning-400)" },
+              { type: "HR Round", icon: "🤝", color: "var(--color-accent-600)" },
             ].map((item) => (
               <button
                 key={item.type}
-                className="rounded-lg border border-[var(--color-border-default)] p-4 text-left transition-all hover:border-[var(--color-brand-500)]"
+                className="group flex flex-col items-center justify-center rounded-xl border border-[var(--color-border-subtle)] bg-[var(--color-surface-2)] p-6 transition-all hover:border-[var(--color-brand-500)] hover:bg-[var(--color-surface-3)] shadow-inner"
               >
-                <span className="text-xl">{item.emoji}</span>
-                <p className="mt-2 text-sm font-medium">{item.type}</p>
+                <span className="text-4xl group-hover:scale-110 transition-transform duration-300 drop-shadow-lg">{item.icon}</span>
+                <p className="mt-4 text-sm font-bold uppercase tracking-widest text-[var(--color-text-secondary)] group-hover:text-[var(--color-text-primary)]">
+                  {item.type}
+                </p>
               </button>
             ))}
           </div>
-        </div>
+        </TiltCard3D>
 
-        {/* JD Input */}
-        <div className="glass rounded-xl p-6 space-y-4">
-          <h2 className="text-lg font-semibold">Job Description (Optional)</h2>
-          <p className="text-xs text-[var(--color-text-secondary)]">
-            Paste a job description for role-specific questions.
-          </p>
+        {/* ── JD INPUT ── */}
+        <TiltCard3D className="p-8 border-[var(--color-border-default)] flex flex-col" glareColor="var(--color-accent-400)">
+          <div className="flex justify-between items-end mb-6">
+            <h2 className="text-4xl font-bold uppercase font-[family-name:var(--font-display)] text-[var(--color-text-primary)] tracking-tight">
+              Job Description
+            </h2>
+            <span className="font-mono text-xs font-bold text-[var(--color-text-tertiary)] uppercase">[ OPTIONAL ]</span>
+          </div>
           <textarea
-            placeholder="Paste the full job description here..."
-            className="h-40 w-full resize-none rounded-lg border border-[var(--color-border-default)] bg-[var(--color-surface-1)] p-4 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-tertiary)] focus:border-[var(--color-brand-500)] focus:outline-none"
+            placeholder="PASTE_RAW_DATA_HERE..."
+            className="flex-1 w-full resize-none rounded-xl border border-[var(--color-border-subtle)] bg-[var(--color-surface-0)] p-6 font-mono text-sm text-[var(--color-brand-400)] placeholder:text-[var(--color-text-tertiary)] focus:border-[var(--color-brand-500)] focus:outline-none focus:ring-1 focus:ring-[var(--color-brand-500)] transition-all shadow-[inset_0_4px_20px_rgba(0,0,0,0.5)]"
           />
-        </div>
+        </TiltCard3D>
       </div>
 
-      <button className="w-full rounded-xl bg-[var(--color-brand-600)] py-4 text-base font-semibold text-white transition-all hover:bg-[var(--color-brand-500)] hover:shadow-[var(--shadow-glow)] sm:w-auto sm:px-12">
-        Start Practice Session
-      </button>
+      {/* ── START CTA ── */}
+      <div className="flex justify-end pt-6">
+        <MagneticButton 
+          className="w-full sm:w-auto bg-[var(--color-brand-600)] hover:bg-[var(--color-brand-500)] text-white px-12 py-6 text-xl font-bold uppercase tracking-widest font-[family-name:var(--font-display)] diagonal-cut shadow-[0_0_30px_oklch(0.75_0.22_140_/_0.3)] transition-colors"
+          magneticStrength={0.2}
+        >
+          Initialize Session
+        </MagneticButton>
+      </div>
     </div>
   );
 }

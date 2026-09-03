@@ -4,15 +4,15 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { ROUTES, SIDEBAR_WIDTH } from "@/lib/constants";
-import { Button } from "@/components/ui/button";
+import { MagneticButton } from "@/components/shared/magnetic-button";
 
 const navItems = [
-  { href: ROUTES.DASHBOARD, label: "Dashboard", icon: "📊" },
-  { href: ROUTES.PRACTICE, label: "Practice", icon: "🎯" },
-  { href: ROUTES.INTERVIEWS, label: "Interviews", icon: "📋" },
-  { href: ROUTES.PASSPORT, label: "Passport", icon: "🪪" },
-  { href: ROUTES.RESUME, label: "Resume", icon: "📄" },
-  { href: ROUTES.SETTINGS, label: "Settings", icon: "⚙️" },
+  { href: ROUTES.DASHBOARD, label: "Dashboard", timecode: "00:00" },
+  { href: ROUTES.PRACTICE, label: "Practice", timecode: "00:15" },
+  { href: ROUTES.INTERVIEWS, label: "Interviews", timecode: "00:30" },
+  { href: ROUTES.PASSPORT, label: "Passport", timecode: "00:45" },
+  { href: ROUTES.RESUME, label: "Resume", timecode: "01:00" },
+  { href: ROUTES.SETTINGS, label: "Settings", timecode: "01:15" },
 ];
 
 export function Sidebar() {
@@ -20,21 +20,21 @@ export function Sidebar() {
 
   return (
     <aside
-      className="flex flex-col border-r border-[var(--color-border-subtle)] bg-[var(--color-surface-1)]/50 backdrop-blur-xl z-20"
+      className="flex flex-col border-r border-[var(--color-border-subtle)] bg-[var(--color-surface-0)] z-20 overflow-hidden"
       style={{ width: SIDEBAR_WIDTH }}
     >
-      {/* ── Logo ── */}
-      <div className="flex h-16 items-center gap-3 border-b border-[var(--color-border-subtle)] px-6">
-        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-[var(--color-brand-400)] to-[var(--color-brand-600)] shadow-lg shadow-[var(--color-brand-500)]/20">
-          <span className="text-sm font-bold text-white tracking-tighter">IL</span>
-        </div>
-        <span className="text-lg font-semibold font-[family-name:var(--font-display)] bg-clip-text text-transparent bg-gradient-to-r from-white to-[var(--color-text-secondary)]">
+      {/* ── Logo Area ── */}
+      <div className="flex h-24 flex-col justify-center px-6 border-b border-[var(--color-border-subtle)] bg-[var(--color-surface-1)]">
+        <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-[var(--color-brand-500)] font-bold mb-1">
+          SYS.V1 // ONLINE
+        </span>
+        <span className="text-3xl font-black font-[family-name:var(--font-display)] uppercase tracking-tighter text-[var(--color-text-primary)]">
           InterviewLab
         </span>
       </div>
 
-      {/* ── Navigation ── */}
-      <nav className="flex-1 space-y-1.5 p-4">
+      {/* ── Navigation (Timecode motif) ── */}
+      <nav className="flex-1 py-6 px-4 space-y-1">
         {navItems.map((item) => {
           const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
           return (
@@ -42,24 +42,38 @@ export function Sidebar() {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200",
+                "group relative flex items-center justify-between rounded-lg px-4 py-4 transition-all duration-300",
                 isActive
-                  ? "bg-[var(--color-brand-600)]/15 text-[var(--color-brand-400)] shadow-sm shadow-[var(--color-brand-500)]/5 border border-[var(--color-brand-500)]/20"
-                  : "text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-2)] hover:text-[var(--color-text-primary)] border border-transparent"
+                  ? "bg-[var(--color-brand-500)] text-white diagonal-cut"
+                  : "text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-2)] hover:text-[var(--color-text-primary)]"
               )}
             >
-              <span className="text-lg grayscale-[50%] contrast-125">{item.icon}</span>
-              {item.label}
+              <span className={cn(
+                "text-3xl font-black uppercase font-[family-name:var(--font-display)] tracking-tighter leading-none mt-1",
+                isActive ? "" : "group-hover:translate-x-2 transition-transform duration-300"
+              )}>
+                {item.label}
+              </span>
+              <span className={cn(
+                "font-mono text-xs font-bold",
+                isActive ? "text-white/70" : "text-[var(--color-text-tertiary)]"
+              )}>
+                {item.timecode}
+              </span>
             </Link>
           );
         })}
       </nav>
 
-      <div className="border-t border-[var(--color-border-subtle)] p-5">
-        <Link href={ROUTES.PRACTICE} className="block">
-          <Button className="w-full bg-[var(--color-brand-600)] hover:bg-[var(--color-brand-500)] shadow-[var(--shadow-glow)] rounded-xl py-6 text-sm font-semibold">
-            🎤 Start Interview
-          </Button>
+      {/* ── Bottom CTA ── */}
+      <div className="p-6 border-t border-[var(--color-border-subtle)] bg-[var(--color-surface-1)]">
+        <Link href={ROUTES.PRACTICE} className="block w-full">
+          <MagneticButton 
+            className="w-full bg-[var(--color-brand-600)] hover:bg-[var(--color-brand-500)] text-white shadow-[0_0_20px_oklch(0.75_0.22_140_/_0.2)] rounded-none py-5 text-sm font-bold uppercase tracking-widest diagonal-cut transition-colors"
+            magneticStrength={0.2}
+          >
+            Launch Core
+          </MagneticButton>
         </Link>
       </div>
     </aside>
