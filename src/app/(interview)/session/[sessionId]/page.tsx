@@ -10,11 +10,7 @@ import { FreezeRecoveryCue } from "@/components/interview/freeze-recovery-cue";
 import { useAudioStore } from "@/features/audio/stores/audio-store";
 import { MagneticButton } from "@/components/shared/magnetic-button";
 
-export default function InterviewSessionPage({
-  params,
-}: {
-  params: Promise<{ sessionId: string }>;
-}) {
+export default function InterviewSessionPage() {
   const [elapsed, setElapsed] = useState(0);
   
   // Dummy State for UI Demonstration
@@ -22,7 +18,7 @@ export default function InterviewSessionPage({
   const [isProcessing, setIsProcessing] = useState(false);
   const { isMuted, toggleMute } = useAudioStore();
   const [showFreezeCue, setShowFreezeCue] = useState(false);
-  const [audioLevel, setAudioLevel] = useState<Float32Array>(new Float32Array(30).fill(0.05));
+  const [audioLevel] = useState<Float32Array>(new Float32Array(30).fill(0.05));
 
   const [transcript] = useState([
     { id: "1", speaker: "ai" as const, text: "System Initialized. Accessing System Design protocol. How would you design a distributed rate limiter?", isFinal: true },
@@ -91,7 +87,7 @@ export default function InterviewSessionPage({
           {/* Current Question / Status */}
           <div className="mt-16 w-full max-w-4xl text-center px-4">
             <h2 className="font-[family-name:var(--font-display)] text-5xl md:text-6xl font-black uppercase leading-[0.9] tracking-tighter text-[var(--color-text-primary)] drop-shadow-xl">
-              "Acknowledged. But what happens during a network partition?"
+              &quot;Acknowledged. But what happens during a network partition?&quot;
             </h2>
             <p className="mt-6 text-sm text-[var(--color-brand-400)] font-mono uppercase tracking-[0.3em] font-bold">
               {isSpeaking ? "> AI_TRANSMITTING..." : isProcessing ? "> NEURAL_PROCESSING..." : "> LISTENING_FOR_INPUT..."}

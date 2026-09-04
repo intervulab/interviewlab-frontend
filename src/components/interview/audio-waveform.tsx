@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
 import { motion } from "framer-motion";
 
 interface AudioWaveformProps {
@@ -23,8 +23,9 @@ export function AudioWaveform({
     if (audioData && audioData.length > i) {
       return Math.max(0.05, Math.min(1, audioData[i]));
     }
-    // Fallback pseudo-random animation if no live data is provided
-    return 0.1 + Math.random() * 0.4;
+    // Fallback deterministic pseudo-random animation if no live data is provided
+    const pseudoRandom = Math.abs(Math.sin(i * 12.9898)) * 0.4; // practically static for render purity
+    return 0.1 + pseudoRandom;
   });
 
   return (

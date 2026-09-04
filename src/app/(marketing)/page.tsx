@@ -139,7 +139,7 @@ export default function LandingPage() {
              Got 3 Seconds?
            </h2>
            <p className="mt-6 font-mono text-sm uppercase tracking-widest text-[var(--color-text-secondary)]">
-             That's all your resume has. Let's fix your interview skills this week.
+             That&apos;s all your resume has. Let&apos;s fix your interview skills this week.
            </p>
            <div className="mt-12 flex justify-center">
               <Link href={ROUTES.REGISTER}>

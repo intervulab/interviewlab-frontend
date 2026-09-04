@@ -2,11 +2,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Interview Report" };
 
-export default function InterviewReportPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default function InterviewReportPage() {
   return (
     <div className="animate-fade-in-up space-y-6">
       <h1 className="text-2xl font-bold font-[family-name:var(--font-display)]">

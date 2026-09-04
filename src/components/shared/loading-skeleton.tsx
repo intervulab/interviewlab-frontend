@@ -11,7 +11,7 @@ export function LoadingSkeleton({
         <div
           key={i}
           className="animate-shimmer h-4 rounded-md"
-          style={{ width: `${Math.random() * 40 + 60}%` }}
+          style={{ width: `${(Math.abs(Math.sin(i * 9.876)) * 40) + 60}%` }}
         />
       ))}
     </div>

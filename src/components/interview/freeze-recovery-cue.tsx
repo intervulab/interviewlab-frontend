@@ -31,14 +31,14 @@ export function FreezeRecoveryCue({ isActive, onActionClick }: FreezeRecoveryCue
             <h4 className="font-semibold text-[var(--color-text-primary)]">
               Take your time.
             </h4>
-            <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
-              It's okay to pause and think. If you're stuck, you can ask for a hint or clarification.
-            </p>
+            <p className="mt-2 text-sm text-[var(--color-text-secondary)] leading-relaxed">
+          It looks like you paused. Take a breath. It&apos;s completely fine to say, &quot;I need a moment to collect my thoughts.&quot;
+        </p>
             <button
               onClick={onActionClick}
               className="mt-3 rounded-lg bg-[var(--color-accent-500)]/20 px-4 py-2 text-xs font-semibold text-[var(--color-accent-400)] hover:bg-[var(--color-accent-500)]/30 transition-colors"
             >
-              "Can I get a hint?"
+              &quot;Can I get a hint?&quot;
             </button>
           </div>
         </motion.div>

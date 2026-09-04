@@ -25,6 +25,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const stored = localStorage.getItem("theme") as Theme | null;
     if (stored) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setThemeState(stored);
     }
   }, []);
@@ -35,6 +36,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     if (theme === "system") {
       const media = window.matchMedia("(prefers-color-scheme: dark)");
       const resolved = media.matches ? "dark" : "light";
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setResolvedTheme(resolved);
       root.setAttribute("data-theme", "system");
 

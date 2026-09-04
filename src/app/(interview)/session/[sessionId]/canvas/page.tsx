@@ -6,11 +6,7 @@
  * This page hosts the interactive system design canvas (Component 2 integration).
  * Candidates drag-and-drop system components and the AI provides real-time feedback.
  */
-export default function CanvasPage({
-  params,
-}: {
-  params: Promise<{ sessionId: string }>;
-}) {
+export default function CanvasPage() {
   return (
     <div className="flex h-full flex-col">
       {/* ── Canvas Top Bar ── */}

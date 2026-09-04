@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-empty-object-type */
 
 /**
  * InterviewLab — Global Type Declarations

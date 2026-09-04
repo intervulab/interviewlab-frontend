@@ -8,7 +8,7 @@
  * - Type-safe message handling
  */
 
-import { WS_CONFIG, WS_MESSAGE_TYPES } from "@/lib/constants";
+import { WS_CONFIG } from "@/lib/constants";
 import type {
   ConnectionState,
   WebSocketConfig,

@@ -1,0 +1,56 @@
+name: 🔀 Auto PR to main
+
+on:
+  push:
+    branches:
+      - 'feat/**'
+      - 'fix/**'
+      - 'chore/**'
+      - 'refactor/**'
+      - 'hotfix/**'
+      - 'dev'
+      - 'develop'
+
+jobs:
+  create-pr:
+    name: 📬 Open Pull Request
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          base: main
+          branch: ${{ github.ref_name }}
+          title: |
+            ${{ github.ref_name }}: ${{ github.event.head_commit.message }}
+          body: |
+            ## 📦 Changes in this PR
+
+            **Branch:** `${{ github.ref_name }}`
+            **Author:** @${{ github.actor }}
+            **Commit:** `${{ github.sha }}`
+
+            ---
+
+            ### ✅ Required CI Checks
+            All checks below must pass before merging:
+            - 🔍 Lint & Type-check
+            - 🏗️ Build
+            - 🧪 Unit Tests
+
+            ---
+
+            > _This PR was auto-created by the InterviewLab CI/CD Pipeline._
+          draft: false
+          delete-branch: false
+          assignees: ${{ github.actor }}
+          labels: |
+            automated pr
