@@ -1,0 +1,35 @@
+===========================================================================
+                      INTERVIEWLAB, INC.
+            PROPRIETARY SOFTWARE LICENSE AND NON-DISCLOSURE AGREEMENT
+===========================================================================
+
+Copyright (c) 2026 InterviewLab, Inc. (the "Company"). All rights reserved.
+
+1. PROPRIETARY AND CONFIDENTIAL
+The source code, architecture, algorithms, and models contained in this repository constitute highly confidential, proprietary trade secrets and intellectual property of InterviewLab, Inc. ("Proprietary Information"). This Proprietary Information is heavily guarded and critical to the Company's competitive advantage.
+
+2. RESTRICTIONS ON USE
+Access to this source code is strictly limited to authorized personnel with an active, executed Non-Disclosure Agreement (NDA) and explicitly granted access rights by the Company. 
+You shall NOT, under any circumstances:
+  (a) Disclose, distribute, publish, display, or otherwise disseminate this Proprietary Information to any unauthorized third party.
+  (b) Use, copy, modify, adapt, translate, or create derivative works from this codebase without explicit written authorization from the executive board of InterviewLab, Inc.
+  (c) Reverse engineer, decompile, disassemble, or attempt to derive the underlying mathematical models, trading logic, AI architectures, or source code from any compiled or obfuscated form.
+  (d) Use this codebase, or any knowledge derived from it, to build or assist in building a competitive product or service.
+
+3. OWNERSHIP
+All rights, title, and interest in and to the software, including all copyrights, patents, trade secrets, trademarks, and other intellectual property rights therein, are and shall remain the exclusive property of InterviewLab, Inc. No license is granted herein by implication, estoppel, or otherwise.
+
+4. NO WARRANTY
+THIS SOFTWARE IS PROVIDED BY INTERVIEWLAB, INC. "AS IS" AND "AS AVAILABLE." THE COMPANY EXPRESSLY DISCLAIMS ALL WARRANTIES OF ANY KIND, WHETHER EXPRESS OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, NON-INFRINGEMENT, AND HIGH-AVAILABILITY. 
+
+5. LIMITATION OF LIABILITY
+IN NO EVENT SHALL INTERVIEWLAB, INC., ITS DIRECTORS, OFFICERS, EMPLOYEES, OR INVESTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+6. GOVERNING LAW AND INJUNCTIVE RELIEF
+This Agreement shall be governed by and construed in accordance with the laws of the State of California, exclusive of its conflict of law principles. Any legal action or proceeding arising under this Agreement will be brought exclusively in the federal or state courts located in San Francisco County, California. You acknowledge that unauthorized disclosure or use of the Proprietary Information will cause irreparable harm to the Company, entitling the Company to seek immediate injunctive relief, in addition to any other remedies available at law or in equity, without the necessity of posting a bond.
+
+===========================================================================
+UNAUTHORIZED ACCESS, USE, OR REPRODUCTION OF THIS SYSTEM AND ITS SOURCE 
+CODE IS STRICTLY PROHIBITED AND WILL BE PROSECUTED TO THE MAXIMUM EXTENT 
+PERMITTED BY LOCAL, STATE, AND FEDERAL LAW.
+===========================================================================
