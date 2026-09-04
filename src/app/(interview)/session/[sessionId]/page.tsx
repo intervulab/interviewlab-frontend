@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { motion } from "framer-motion";
 import { AIAvatar } from "@/components/interview/ai-avatar";
 import { AudioWaveform } from "@/components/interview/audio-waveform";
 import { TranscriptPanel } from "@/components/interview/transcript-panel";
@@ -46,7 +47,12 @@ export default function InterviewSessionPage() {
       <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] pointer-events-none mix-blend-overlay" />
 
       {/* ── Top Bar ── */}
-      <header className="relative z-10 flex items-center justify-between border-b border-[var(--color-border-subtle)] bg-[var(--color-surface-0)]/60 backdrop-blur-xl px-8 py-5">
+      <motion.header
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="relative z-10 flex items-center justify-between border-b border-[var(--color-border-subtle)] bg-[var(--color-surface-0)]/60 backdrop-blur-xl px-8 py-5"
+      >
         <div className="flex items-center gap-6">
           <Link
             href="/dashboard"
@@ -74,7 +80,7 @@ export default function InterviewSessionPage() {
             End Protocol
           </MagneticButton>
         </div>
-      </header>
+      </motion.header>
 
       {/* ── Main Content ── */}
       <div className="relative z-10 flex flex-1 overflow-hidden">
@@ -85,14 +91,19 @@ export default function InterviewSessionPage() {
           <AIAvatar isSpeaking={isSpeaking} isProcessing={isProcessing} />
 
           {/* Current Question / Status */}
-          <div className="mt-16 w-full max-w-4xl text-center px-4">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4, duration: 0.6 }}
+            className="mt-16 w-full max-w-4xl text-center px-4"
+          >
             <h2 className="font-[family-name:var(--font-display)] text-5xl md:text-6xl font-black uppercase leading-[0.9] tracking-tighter text-[var(--color-text-primary)] drop-shadow-xl">
               &quot;Acknowledged. But what happens during a network partition?&quot;
             </h2>
             <p className="mt-6 text-sm text-[var(--color-brand-400)] font-mono uppercase tracking-[0.3em] font-bold">
               {isSpeaking ? "> AI_TRANSMITTING..." : isProcessing ? "> NEURAL_PROCESSING..." : "> LISTENING_FOR_INPUT..."}
             </p>
-          </div>
+          </motion.div>
 
           {/* Controls & Waveform */}
           <div className="mt-16 flex flex-col items-center gap-8">

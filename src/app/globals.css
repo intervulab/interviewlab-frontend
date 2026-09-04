@@ -263,6 +263,50 @@ body {
   to { transform: rotate(360deg); }
 }
 
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  25% {
+    transform: translateY(calc(var(--float-amplitude, 20px) * -0.5)) rotate(calc(var(--float-rotate, 3deg) * 0.5));
+  }
+  50% {
+    transform: translateY(calc(var(--float-amplitude, 20px) * -1)) rotate(var(--float-rotate, 3deg));
+  }
+  75% {
+    transform: translateY(calc(var(--float-amplitude, 20px) * -0.5)) rotate(calc(var(--float-rotate, 3deg) * 0.5));
+  }
+}
+
+@keyframes gradient-rotate {
+  0% { --gradient-angle: 0deg; }
+  100% { --gradient-angle: 360deg; }
+}
+
+@keyframes text-shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+@keyframes glow-pulse {
+  0%, 100% {
+    box-shadow: 0 0 20px oklch(0.75 0.22 140 / 0.3), 0 0 60px oklch(0.75 0.22 140 / 0.1);
+  }
+  50% {
+    box-shadow: 0 0 30px oklch(0.75 0.22 140 / 0.5), 0 0 80px oklch(0.75 0.22 140 / 0.2);
+  }
+}
+
+@keyframes orbit {
+  from { transform: rotate(0deg) translateX(var(--orbit-radius, 120px)) rotate(0deg); }
+  to { transform: rotate(360deg) translateX(var(--orbit-radius, 120px)) rotate(-360deg); }
+}
+
+@keyframes wireframe-spin {
+  from { transform: rotateX(15deg) rotateY(0deg); }
+  to { transform: rotateX(15deg) rotateY(360deg); }
+}
+
 /* ============================================
    Utility Classes
    ============================================ */
@@ -303,6 +347,88 @@ body {
   );
   background-size: 200% 100%;
   animation: shimmer 1.5s ease-in-out infinite;
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+.animate-orbit {
+  animation: orbit 20s linear infinite;
+}
+
+.animate-wireframe-spin {
+  animation: wireframe-spin 12s linear infinite;
+  transform-style: preserve-3d;
+}
+
+.glow-pulse {
+  animation: glow-pulse 3s ease-in-out infinite;
+}
+
+.text-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--color-text-primary) 0%,
+    var(--color-brand-400) 40%,
+    var(--color-accent-400) 60%,
+    var(--color-text-primary) 100%
+  );
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: text-shimmer 4s ease-in-out infinite;
+}
+
+/* ── Blade Divider (steep diagonal with glow edge) ── */
+.blade-divider {
+  position: relative;
+  clip-path: polygon(0 0, 100% 4rem, 100% 100%, 0 100%);
+}
+.blade-divider::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--color-brand-500), var(--color-accent-400), transparent);
+  opacity: 0.6;
+  transform: rotate(-2deg);
+  transform-origin: left;
+}
+
+/* ── Animated Gradient Border ── */
+@property --gradient-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+.animate-gradient-border {
+  position: relative;
+  border: none;
+}
+.animate-gradient-border::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 2px;
+  background: conic-gradient(
+    from var(--gradient-angle, 0deg),
+    var(--color-brand-500),
+    var(--color-accent-400),
+    var(--color-danger-500),
+    var(--color-accent-600),
+    var(--color-brand-500)
+  );
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  -webkit-mask-composite: xor;
+  pointer-events: none;
+  animation: gradient-rotate 3s linear infinite;
 }
 
 /* ── Gradient Text ── */
