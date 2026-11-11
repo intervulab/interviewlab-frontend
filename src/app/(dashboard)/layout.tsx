@@ -1,6 +1,7 @@
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import { PageTransition } from "@/components/shared/page-transition";
+import { RequireAuth } from "@/components/auth/require-auth";
 
 export default function DashboardLayout({
   children,
@@ -13,9 +14,11 @@ export default function DashboardLayout({
       <div className="flex flex-1 flex-col overflow-hidden">
         <Header />
         <main className="flex-1 overflow-y-auto p-6 lg:p-8">
-          <PageTransition>
-            <div className="mx-auto max-w-6xl">{children}</div>
-          </PageTransition>
+          <RequireAuth>
+            <PageTransition>
+              <div className="mx-auto max-w-6xl">{children}</div>
+            </PageTransition>
+          </RequireAuth>
         </main>
       </div>
     </div>

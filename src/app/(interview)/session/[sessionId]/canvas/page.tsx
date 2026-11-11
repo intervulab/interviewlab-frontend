@@ -1,88 +1,75 @@
 "use client";
 
-/**
- * System Design Canvas Page
- *
- * This page hosts the interactive system design canvas (Component 2 integration).
- * Candidates drag-and-drop system components and the AI provides real-time feedback.
- */
+import { useParams } from "next/navigation";
+import Link from "next/link";
+import { useCallback, useEffect, useState } from "react";
+import { ROUTES } from "@/lib/constants";
+import { submitSystemDesign } from "@/features/backend/api";
+import { ApiClientError } from "@/lib/api-client";
+
 export default function CanvasPage() {
+  const params = useParams();
+  const sessionId = params.sessionId as string;
+  const canvasBase = process.env.NEXT_PUBLIC_CANVAS_APP_URL || "http://localhost:3001";
+  const iframeSrc = `${canvasBase}?sessionId=${encodeURIComponent(sessionId)}`;
+
+  const [status, setStatus] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const submitTopology = useCallback(
+    async (topology: unknown) => {
+      setError(null);
+      try {
+        await submitSystemDesign(sessionId, { topology, submittedAt: new Date().toISOString() });
+        setStatus("Canvas submitted for AI assessment.");
+      } catch (err) {
+        setError(err instanceof ApiClientError ? err.message : "Submit failed");
+      }
+    },
+    [sessionId]
+  );
+
+  useEffect(() => {
+    function onMessage(event: MessageEvent) {
+      if (event.data?.type === "topology" && event.data.topology) {
+        submitTopology(event.data.topology);
+      }
+    }
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, [submitTopology]);
+
+  function requestTopology() {
+    const frame = document.getElementById("system-canvas-iframe") as HTMLIFrameElement | null;
+    frame?.contentWindow?.postMessage({ type: "request_topology" }, "*");
+    setStatus("Requesting topology from canvas…");
+  }
+
   return (
     <div className="flex h-full flex-col">
-      {/* ── Canvas Top Bar ── */}
-      <header className="glass flex items-center justify-between border-b border-[var(--glass-border)] px-6 py-3">
-        <div className="flex items-center gap-3">
-          <span className="text-sm font-medium">System Design Canvas</span>
-          <span className="rounded-full bg-[var(--color-brand-500)]/20 px-2 py-0.5 text-xs font-medium text-[var(--color-brand-400)]">
-            Interactive
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <button className="rounded-lg border border-[var(--color-border-default)] px-3 py-1.5 text-xs font-medium transition-colors hover:bg-[var(--color-surface-2)]">
-            Clear Canvas
-          </button>
-          <button className="rounded-lg border border-[var(--color-border-default)] px-3 py-1.5 text-xs font-medium transition-colors hover:bg-[var(--color-surface-2)]">
-            Export
+      <header className="flex items-center justify-between border-b border-[var(--color-border-subtle)] px-6 py-3">
+        <Link href={ROUTES.INTERVIEW_SESSION(sessionId)} className="text-sm text-[var(--color-brand-400)]">
+          ← Back to interview
+        </Link>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={requestTopology}
+            className="rounded-lg bg-[var(--color-brand-600)] px-4 py-2 text-xs font-bold text-white"
+          >
+            Submit design
           </button>
         </div>
       </header>
-
-      {/* ── Canvas Area ── */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* Component Palette */}
-        <div className="w-56 border-r border-[var(--color-border-subtle)] p-4">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-tertiary)]">
-            Components
-          </h3>
-          <div className="mt-4 space-y-2">
-            {[
-              { icon: "🖥️", name: "Server" },
-              { icon: "🗄️", name: "Database" },
-              { icon: "⚖️", name: "Load Balancer" },
-              { icon: "📦", name: "Cache" },
-              { icon: "📨", name: "Message Queue" },
-              { icon: "🌐", name: "CDN" },
-              { icon: "🔐", name: "Auth Service" },
-              { icon: "📡", name: "API Gateway" },
-            ].map((comp) => (
-              <div
-                key={comp.name}
-                className="flex cursor-grab items-center gap-2 rounded-lg border border-[var(--color-border-default)] p-2.5 text-sm transition-all hover:border-[var(--color-brand-500)] hover:shadow-sm active:cursor-grabbing"
-                draggable
-              >
-                <span>{comp.icon}</span>
-                <span>{comp.name}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Canvas Embed Area — Component 2 mounts here */}
-        <div className="flex flex-1 items-center justify-center bg-[var(--color-surface-1)]">
-          <div className="text-center text-[var(--color-text-tertiary)]">
-            <span className="text-4xl">🎨</span>
-            <p className="mt-4 font-medium">System Design Canvas</p>
-            <p className="mt-1 text-sm">
-              Component 2 (Interactive Canvas) will mount here.
-            </p>
-            <p className="mt-1 text-xs">
-              Drag components from the left panel to design your architecture.
-            </p>
-          </div>
-        </div>
-
-        {/* AI Feedback Panel */}
-        <div className="w-72 border-l border-[var(--color-border-subtle)] p-4">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-tertiary)]">
-            AI Feedback
-          </h3>
-          <div className="mt-4 space-y-3">
-            <p className="text-sm text-[var(--color-text-secondary)] italic">
-              The AI will analyze your design and provide feedback here...
-            </p>
-          </div>
-        </div>
-      </div>
+      {status && <p className="px-6 py-2 text-xs text-[var(--color-text-secondary)]">{status}</p>}
+      {error && <p className="px-6 py-2 text-xs text-[var(--color-danger-400)]">{error}</p>}
+      <iframe
+        id="system-canvas-iframe"
+        title="System Design Canvas"
+        src={iframeSrc}
+        className="flex-1 w-full border-0 bg-[var(--color-surface-1)]"
+        allow="clipboard-read; clipboard-write"
+      />
     </div>
   );
 }

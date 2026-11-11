@@ -1,172 +1,302 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { useParams, useRouter } from "next/navigation";
 import { AIAvatar } from "@/components/interview/ai-avatar";
 import { AudioWaveform } from "@/components/interview/audio-waveform";
 import { TranscriptPanel } from "@/components/interview/transcript-panel";
 import { SpeechMetricsHud } from "@/components/interview/speech-metrics-hud";
-import { FreezeRecoveryCue } from "@/components/interview/freeze-recovery-cue";
-import { useAudioStore } from "@/features/audio/stores/audio-store";
 import { MagneticButton } from "@/components/shared/magnetic-button";
+import { getSession, submitAnswer, generateReport } from "@/features/backend/api";
+import type { InterviewQuestionDto, InterviewSessionDto } from "@/features/backend/types";
+import { ROUTES } from "@/lib/constants";
+import { ApiClientError } from "@/lib/api-client";
+import type { RealTimeMetrics } from "@/types/api.types";
+
+function firstUnanswered(questions: InterviewQuestionDto[]) {
+  return questions.find((q) => !q.answer) ?? null;
+}
 
 export default function InterviewSessionPage() {
-  const [elapsed, setElapsed] = useState(0);
-  
-  // Dummy State for UI Demonstration
-  const [isSpeaking, setIsSpeaking] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const { isMuted, toggleMute } = useAudioStore();
-  const [showFreezeCue, setShowFreezeCue] = useState(false);
-  const [audioLevel] = useState<Float32Array>(new Float32Array(30).fill(0.05));
+  const params = useParams();
+  const router = useRouter();
+  const sessionId = params.sessionId as string;
 
-  const [transcript] = useState([
-    { id: "1", speaker: "ai" as const, text: "System Initialized. Accessing System Design protocol. How would you design a distributed rate limiter?", isFinal: true },
-    { id: "2", speaker: "candidate" as const, text: "I would use a token bucket algorithm with Redis...", isFinal: true },
-    { id: "3", speaker: "ai" as const, text: "Acknowledged. But what happens during a network partition?", isFinal: true },
-  ]);
+  const [session, setSession] = useState<InterviewSessionDto | null>(null);
+  const [activeQuestion, setActiveQuestion] = useState<InterviewQuestionDto | null>(null);
+  const [answerText, setAnswerText] = useState("");
+  const [feedback, setFeedback] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [metrics, setMetrics] = useState({
+    wpm: 0,
+    fillerPct: 0,
+    hesitation: 0,
+    confidence: 0,
+  });
+  const [transcript, setTranscript] = useState<
+    Array<{ id: string; speaker: "ai" | "candidate"; text: string; isFinal: boolean }>
+  >([]);
+
+  const mediaRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const [recording, setRecording] = useState(false);
+  const recordStartRef = useRef<number | null>(null);
+
+  const loadSession = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await getSession(sessionId);
+      setSession(data);
+      const next = firstUnanswered(data.questions);
+      setActiveQuestion(next);
+      const entries = data.questions.flatMap((q) => {
+        const list: typeof transcript = [
+          {
+            id: `q-${q.id}`,
+            speaker: "ai",
+            text: q.questionText,
+            isFinal: true,
+          },
+        ];
+        if (q.answer?.transcriptText) {
+          list.push({
+            id: `a-${q.id}`,
+            speaker: "candidate",
+            text: q.answer.transcriptText,
+            isFinal: true,
+          });
+        }
+        return list;
+      });
+      setTranscript(entries);
+      if (next) {
+        setTranscript((prev) => {
+          if (prev.some((e) => e.id === `q-${next.id}`)) return prev;
+          return [
+            ...prev,
+            { id: `q-${next.id}`, speaker: "ai", text: next.questionText, isFinal: true },
+          ];
+        });
+      }
+    } catch (err) {
+      setError(err instanceof ApiClientError ? err.message : "Failed to load session");
+    } finally {
+      setLoading(false);
+    }
+  }, [sessionId]);
 
   useEffect(() => {
-    const timer = setInterval(() => setElapsed((prev) => prev + 1), 1000);
-    return () => clearInterval(timer);
-  }, []);
+    loadSession();
+  }, [loadSession]);
 
-  const formatTime = (seconds: number) => {
-    const m = Math.floor(seconds / 60).toString().padStart(2, "0");
-    const s = (seconds % 60).toString().padStart(2, "0");
-    return `${m}:${s}`;
+  const applyMetrics = (rt?: RealTimeMetrics, raw?: Record<string, unknown>) => {
+    const m = raw || {};
+    setMetrics({
+      wpm: rt?.currentWPM ?? (m.averageWPM as number) ?? (m.speechPaceWpm as number) ?? 0,
+      fillerPct: (m.fillerWordPercentage as number) ?? rt?.fillerWords ?? 0,
+      hesitation: rt?.hesitationSpikes ?? (m.hesitationCount as number) ?? 0,
+      confidence: (m.confidenceScore as number) ?? (m.clarityScore as number) ?? 0,
+    });
   };
 
-  return (
-    <div className="flex h-full flex-col relative overflow-hidden bg-[var(--color-surface-0)] text-[var(--color-text-primary)] font-sans selection:bg-[var(--color-brand-500)] selection:text-white">
-      
-      {/* ── 3D Tech Background Gradients ── */}
-      <div className="absolute top-[-20%] left-[-10%] h-[60%] w-[60%] rounded-full bg-[var(--color-brand-900)]/30 blur-[150px] pointer-events-none" />
-      <div className="absolute bottom-[-20%] right-[-10%] h-[50%] w-[50%] rounded-full bg-[var(--color-accent-900)]/20 blur-[150px] pointer-events-none" />
-      <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] pointer-events-none mix-blend-overlay" />
+  async function toggleRecording() {
+    if (recording && mediaRef.current) {
+      mediaRef.current.stop();
+      setRecording(false);
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      chunksRef.current = [];
+      const recorder = new MediaRecorder(stream);
+      mediaRef.current = recorder;
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data);
+      };
+      recorder.start();
+      recordStartRef.current = Date.now();
+      setRecording(true);
+    } catch {
+      setError("Microphone permission denied");
+    }
+  }
 
-      {/* ── Top Bar ── */}
-      <motion.header
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="relative z-10 flex items-center justify-between border-b border-[var(--color-border-subtle)] bg-[var(--color-surface-0)]/60 backdrop-blur-xl px-8 py-5"
-      >
-        <div className="flex items-center gap-6">
+  async function handleSubmit() {
+    if (!activeQuestion) return;
+    setSubmitting(true);
+    setError(null);
+    setFeedback(null);
+    try {
+      let audioBlob: Blob | undefined;
+      let durationSeconds: number | undefined;
+
+      if (mediaRef.current && mediaRef.current.state !== "inactive") {
+        await new Promise<void>((resolve) => {
+          const rec = mediaRef.current!;
+          rec.onstop = () => resolve();
+          rec.stop();
+        });
+        setRecording(false);
+        if (chunksRef.current.length) {
+          audioBlob = new Blob(chunksRef.current, { type: "audio/webm" });
+          durationSeconds =
+            recordStartRef.current != null
+              ? (Date.now() - recordStartRef.current) / 1000
+              : undefined;
+        }
+      }
+
+      const result = await submitAnswer(activeQuestion.id, {
+        transcriptText: answerText || undefined,
+        audioBlob,
+        durationSeconds,
+      });
+
+      if (answerText.trim()) {
+        setTranscript((prev) => [
+          ...prev,
+          {
+            id: `a-${Date.now()}`,
+            speaker: "candidate",
+            text: answerText.trim(),
+            isFinal: true,
+          },
+        ]);
+      }
+
+      applyMetrics(
+        result.realTimeMetrics,
+        result.answer?.audioAnalysis?.rawMetricsJson as Record<string, unknown> | undefined
+      );
+
+      const evalText = result.agent?.evaluation?.feedback;
+      if (evalText) setFeedback(evalText);
+
+      setAnswerText("");
+      chunksRef.current = [];
+
+      if (result.agent?.session_complete) {
+        await generateReport(sessionId);
+        router.push(ROUTES.INTERVIEW_REPORT(sessionId));
+        return;
+      }
+
+      if (result.agent?.next_question) {
+        const refreshed = await getSession(sessionId);
+        setSession(refreshed);
+        const next = firstUnanswered(refreshed.questions);
+        setActiveQuestion(next);
+        if (next) {
+          setTranscript((prev) => [
+            ...prev,
+            { id: `q-${next.id}`, speaker: "ai", text: next.questionText, isFinal: true },
+          ]);
+        }
+      } else {
+        await loadSession();
+      }
+    } catch (err) {
+      setError(err instanceof ApiClientError ? err.message : "Submit failed");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleEnd() {
+    try {
+      await generateReport(sessionId);
+      router.push(ROUTES.INTERVIEW_REPORT(sessionId));
+    } catch (err) {
+      setError(err instanceof ApiClientError ? err.message : "Could not finalize report");
+    }
+  }
+
+  const questionText = activeQuestion?.questionText ?? "Session complete — generate your report.";
+
+  const audioLevel = useMemo(() => {
+    const arr = new Float32Array(30);
+    const v = recording ? 0.15 + Math.random() * 0.25 : 0.05;
+    arr.fill(v);
+    return arr;
+  }, [recording]);
+
+  if (loading) {
+    return <div className="flex h-full items-center justify-center text-[var(--color-text-secondary)]">Loading session…</div>;
+  }
+
+  return (
+    <div className="flex h-full flex-col relative overflow-hidden bg-[var(--color-surface-0)]">
+      <header className="z-10 flex items-center justify-between border-b border-[var(--color-border-subtle)] px-8 py-4">
+        <Link href={ROUTES.PRACTICE} className="text-sm text-[var(--color-text-secondary)] hover:text-white">
+          ← Back
+        </Link>
+        <span className="font-mono text-xs text-[var(--color-brand-400)]">{session?.targetRole}</span>
+        <div className="flex gap-3">
           <Link
-            href="/dashboard"
-            className="group flex items-center gap-2 rounded-lg bg-[var(--color-surface-2)] px-4 py-2 text-sm font-bold uppercase tracking-widest text-[var(--color-text-secondary)] transition-all hover:bg-[var(--color-surface-3)] hover:text-[var(--color-text-primary)]"
+            href={ROUTES.INTERVIEW_CANVAS(sessionId)}
+            className="rounded-lg border border-[var(--color-border-default)] px-3 py-1.5 text-xs"
           >
-            <span className="text-lg leading-none group-hover:-translate-x-1 transition-transform">←</span> Abort
+            System Design
           </Link>
-          <div className="h-6 w-px bg-[var(--color-border-default)]" />
-          <h1 className="text-2xl font-black tracking-widest uppercase font-[family-name:var(--font-display)] text-[var(--color-text-primary)] mt-1">
-            SYS_DESIGN // 001
-          </h1>
-          <span className="animate-pulse rounded border border-[var(--color-danger-500)]/50 bg-[var(--color-danger-500)]/10 px-3 py-1 text-xs font-bold uppercase tracking-widest text-[var(--color-danger-400)] shadow-[0_0_15px_oklch(0.55_0.27_20_/_0.3)]">
-            REC
-          </span>
-        </div>
-        <div className="flex items-center gap-8">
-          <div className="flex items-center gap-3 font-mono text-base font-bold text-[var(--color-text-secondary)]">
-            <span className="w-2.5 h-2.5 rounded-full bg-[var(--color-brand-500)] animate-pulse shadow-[0_0_10px_oklch(0.75_0.22_140)]" />
-            {formatTime(elapsed)} / 45:00
-          </div>
-          <MagneticButton 
-            className="rounded-xl bg-[var(--color-surface-2)] border border-[var(--color-border-strong)] px-6 py-2.5 text-sm font-bold uppercase tracking-widest text-white transition-all hover:bg-[var(--color-surface-3)]"
-            magneticStrength={0.2}
-          >
-            End Protocol
+          <MagneticButton onClick={handleEnd} className="rounded-lg bg-[var(--color-surface-2)] px-4 py-2 text-xs font-bold">
+            End &amp; Report
           </MagneticButton>
         </div>
-      </motion.header>
+      </header>
 
-      {/* ── Main Content ── */}
-      <div className="relative z-10 flex flex-1 overflow-hidden">
-        
-        {/* ── Left: Interview Area (Avatar & Mic) ── */}
-        <div className="flex flex-1 flex-col items-center justify-center p-8 relative">
-          
-          <AIAvatar isSpeaking={isSpeaking} isProcessing={isProcessing} />
+      {error && (
+        <p className="mx-8 mt-4 rounded border border-[var(--color-danger-500)]/40 bg-[var(--color-danger-500)]/10 px-3 py-2 text-sm text-[var(--color-danger-400)]">
+          {error}
+        </p>
+      )}
 
-          {/* Current Question / Status */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4, duration: 0.6 }}
-            className="mt-16 w-full max-w-4xl text-center px-4"
-          >
-            <h2 className="font-[family-name:var(--font-display)] text-5xl md:text-6xl font-black uppercase leading-[0.9] tracking-tighter text-[var(--color-text-primary)] drop-shadow-xl">
-              &quot;Acknowledged. But what happens during a network partition?&quot;
-            </h2>
-            <p className="mt-6 text-sm text-[var(--color-brand-400)] font-mono uppercase tracking-[0.3em] font-bold">
-              {isSpeaking ? "> AI_TRANSMITTING..." : isProcessing ? "> NEURAL_PROCESSING..." : "> LISTENING_FOR_INPUT..."}
+      <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-1 flex-col items-center justify-center p-8 gap-8">
+          <AIAvatar isSpeaking={!activeQuestion} isProcessing={submitting} />
+          <h2 className="max-w-3xl text-center text-2xl font-bold leading-snug">{questionText}</h2>
+          {feedback && (
+            <p className="max-w-2xl rounded-xl border border-[var(--color-brand-500)]/30 bg-[var(--color-brand-500)]/10 px-4 py-3 text-sm">
+              {feedback}
             </p>
-          </motion.div>
-
-          {/* Controls & Waveform */}
-          <div className="mt-16 flex flex-col items-center gap-8">
+          )}
+          <textarea
+            value={answerText}
+            onChange={(e) => setAnswerText(e.target.value)}
+            placeholder="Type your answer (optional if you record audio)…"
+            rows={4}
+            className="w-full max-w-2xl rounded-xl border border-[var(--color-border-default)] bg-[var(--color-surface-1)] p-4 text-sm"
+          />
+          <div className="flex flex-wrap items-center justify-center gap-4">
             <MagneticButton
-              onClick={toggleMute}
-              magneticStrength={0.5}
-              className={`flex h-24 w-24 items-center justify-center rounded-2xl text-white shadow-2xl transition-all ${
-                isMuted
-                  ? "bg-[var(--color-surface-3)] border border-[var(--color-border-strong)]"
-                  : "bg-gradient-to-br from-[var(--color-brand-400)] to-[var(--color-brand-600)] animate-mic-pulse border border-[var(--color-brand-300)]"
-              }`}
+              onClick={toggleRecording}
+              className={`px-6 py-3 rounded-xl text-sm font-bold ${recording ? "bg-[var(--color-danger-600)]" : "bg-[var(--color-brand-600)]"} text-white`}
             >
-              <span className="text-4xl">{isMuted ? "🔇" : "🎤"}</span>
+              {recording ? "Stop recording" : "Record answer"}
             </MagneticButton>
-            
-            {/* Real-time waveform */}
-            <div className="h-20 w-80 rounded-2xl bg-[var(--color-surface-1)]/50 backdrop-blur-md flex items-center justify-center p-4 border border-[var(--color-border-subtle)] shadow-inner">
-              <AudioWaveform isListening={!isMuted} audioData={audioLevel} barCount={40} />
-            </div>
+            <MagneticButton
+              onClick={handleSubmit}
+              className="px-6 py-3 rounded-xl bg-[var(--color-accent-600)] text-white text-sm font-bold disabled:opacity-50"
+            >
+              {submitting ? "Submitting…" : "Submit answer"}
+            </MagneticButton>
           </div>
+          <AudioWaveform isListening={recording} audioData={audioLevel} barCount={32} />
         </div>
 
-        {/* ── Right: Panels ── */}
-        <div className="flex w-[450px] flex-col border-l border-[var(--color-border-subtle)] bg-[var(--color-surface-0)]/90 backdrop-blur-2xl shadow-[-20px_0_50px_rgba(0,0,0,0.5)] z-20">
-          
-          {/* Speech Metrics HUD */}
-          <div className="border-b border-[var(--color-border-subtle)] p-6 bg-[var(--color-surface-1)]/30">
-            <h3 className="font-mono text-xs font-bold text-[var(--color-text-secondary)] uppercase tracking-widest mb-4">
-              [ Cognitive Metrics ]
-            </h3>
-            <SpeechMetricsHud
-              wpm={142}
-              fillerWordPercent={12}
-              hesitationScore={45}
-              confidenceScore={88}
-            />
-          </div>
-
-          {/* Live Transcript */}
-          <div className="flex-1 overflow-hidden p-6 flex flex-col">
-            <h3 className="font-mono text-xs font-bold text-[var(--color-text-secondary)] uppercase tracking-widest mb-4">
-              [ Live Transcript ]
-            </h3>
-            <div className="flex-1">
-              <TranscriptPanel entries={transcript} />
-            </div>
-          </div>
-
+        <div className="w-[380px] border-l border-[var(--color-border-subtle)] p-6 space-y-6">
+          <SpeechMetricsHud
+            wpm={metrics.wpm}
+            fillerWordPercent={metrics.fillerPct}
+            hesitationScore={Math.min(100, metrics.hesitation * 10)}
+            confidenceScore={metrics.confidence}
+          />
+          <TranscriptPanel entries={transcript} />
         </div>
       </div>
-
-      <FreezeRecoveryCue 
-        isActive={showFreezeCue} 
-        onActionClick={() => setShowFreezeCue(false)} 
-      />
-
-      {/* Dev Tools Overlay */}
-      <div className="absolute bottom-6 left-6 z-50 flex gap-3 bg-[var(--color-surface-1)]/80 backdrop-blur-md p-3 rounded-xl border border-[var(--color-border-subtle)] font-mono text-[10px] uppercase font-bold text-[var(--color-text-secondary)]">
-        <button onClick={() => setIsSpeaking(!isSpeaking)} className="px-3 py-1.5 bg-[var(--color-surface-2)] rounded hover:bg-[var(--color-surface-3)] hover:text-white transition-colors">Toggle AI</button>
-        <button onClick={() => setIsProcessing(!isProcessing)} className="px-3 py-1.5 bg-[var(--color-surface-2)] rounded hover:bg-[var(--color-surface-3)] hover:text-white transition-colors">Toggle Process</button>
-        <button onClick={() => setShowFreezeCue(!showFreezeCue)} className="px-3 py-1.5 bg-[var(--color-surface-2)] rounded hover:bg-[var(--color-surface-3)] hover:text-white transition-colors">Toggle Freeze</button>
-      </div>
-
     </div>
   );
 }

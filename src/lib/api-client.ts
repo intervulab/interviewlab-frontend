@@ -1,9 +1,8 @@
 /**
- * InterviewLab — Typed API Client
- *
- * Wrapper around fetch with type safety, error handling,
- * and automatic auth header injection.
+ * InterviewLab — Typed API Client (Component 3 gateway)
  */
+
+import { getAuthToken } from "@/lib/auth-storage";
 
 type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
@@ -13,7 +12,7 @@ interface ApiRequestOptions {
   headers?: Record<string, string>;
   signal?: AbortSignal;
   cache?: RequestCache;
-  tags?: string[];
+  skipAuth?: boolean;
 }
 
 interface ApiError {
@@ -37,42 +36,29 @@ class ApiClientError extends Error {
   }
 }
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
-
-async function getAuthToken(): Promise<string | null> {
-  // In a real app, this would read from NextAuth session
-  // For now, return null — will be implemented when auth is wired up
-  if (typeof window === "undefined") return null;
-  try {
-    const response = await fetch("/api/auth/session");
-    const session = await response.json();
-    return session?.accessToken || null;
-  } catch {
-    return null;
-  }
-}
+/** Browser requests use Next.js rewrite → backend (see next.config.ts). */
+const API_PREFIX = "/api/v1";
 
 async function apiRequest<T>(
   endpoint: string,
   options: ApiRequestOptions = {}
 ): Promise<T> {
-  const { method = "GET", body, headers = {}, signal, cache } = options;
-
-  const token = await getAuthToken();
+  const { method = "GET", body, headers = {}, signal, cache, skipAuth } = options;
 
   const requestHeaders: Record<string, string> = {
     "Content-Type": "application/json",
     ...headers,
   };
 
-  if (token) {
-    requestHeaders["Authorization"] = `Bearer ${token}`;
+  if (!skipAuth) {
+    const token = getAuthToken();
+    if (token) {
+      requestHeaders.Authorization = `Bearer ${token}`;
+    }
   }
 
-  const url = endpoint.startsWith("http")
-    ? endpoint
-    : `${API_BASE_URL}${endpoint}`;
+  const path = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
+  const url = path.startsWith("/api/") ? path : `${API_PREFIX}${path}`;
 
   const response = await fetch(url, {
     method,
@@ -83,24 +69,20 @@ async function apiRequest<T>(
   });
 
   if (!response.ok) {
-    let errorBody: ApiError;
+    let message = response.statusText || "Request failed";
     try {
-      errorBody = await response.json();
+      const errorBody = await response.json();
+      message =
+        errorBody?.error?.message ||
+        errorBody?.message ||
+        errorBody?.detail ||
+        message;
     } catch {
-      errorBody = {
-        status: response.status,
-        message: response.statusText || "An unknown error occurred",
-      };
+      /* ignore */
     }
-    throw new ApiClientError({
-      status: response.status,
-      message: errorBody.message || "Request failed",
-      code: errorBody.code,
-      details: errorBody.details,
-    });
+    throw new ApiClientError({ status: response.status, message });
   }
 
-  // Handle 204 No Content
   if (response.status === 204) {
     return undefined as T;
   }
@@ -108,9 +90,40 @@ async function apiRequest<T>(
   return response.json() as Promise<T>;
 }
 
-/**
- * Typed API client for InterviewLab backend (Component 3).
- */
+async function apiFormData<T>(endpoint: string, formData: FormData): Promise<T> {
+  const token = getAuthToken();
+  const headers: Record<string, string> = {};
+  if (token) headers.Authorization = `Bearer ${token}`;
+
+  const path = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
+  const url = path.startsWith("/api/") ? path : `${API_PREFIX}${path}`;
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers,
+    body: formData,
+  });
+
+  if (!response.ok) {
+    let message = response.statusText || "Upload failed";
+    try {
+      const errorBody = await response.json();
+      message = errorBody?.error?.message || errorBody?.message || message;
+    } catch {
+      /* ignore */
+    }
+    throw new ApiClientError({ status: response.status, message });
+  }
+
+  return response.json() as Promise<T>;
+}
+
+export interface BackendEnvelope<T> {
+  success: boolean;
+  data: T;
+  message?: string;
+}
+
 export const api = {
   get: <T>(endpoint: string, options?: Omit<ApiRequestOptions, "method" | "body">) =>
     apiRequest<T>(endpoint, { ...options, method: "GET" }),
@@ -118,14 +131,10 @@ export const api = {
   post: <T>(endpoint: string, body?: unknown, options?: Omit<ApiRequestOptions, "method" | "body">) =>
     apiRequest<T>(endpoint, { ...options, method: "POST", body }),
 
-  put: <T>(endpoint: string, body?: unknown, options?: Omit<ApiRequestOptions, "method" | "body">) =>
-    apiRequest<T>(endpoint, { ...options, method: "PUT", body }),
-
   patch: <T>(endpoint: string, body?: unknown, options?: Omit<ApiRequestOptions, "method" | "body">) =>
     apiRequest<T>(endpoint, { ...options, method: "PATCH", body }),
 
-  delete: <T>(endpoint: string, options?: Omit<ApiRequestOptions, "method" | "body">) =>
-    apiRequest<T>(endpoint, { ...options, method: "DELETE" }),
+  postForm: <T>(endpoint: string, formData: FormData) => apiFormData<T>(endpoint, formData),
 };
 
 export { ApiClientError };
