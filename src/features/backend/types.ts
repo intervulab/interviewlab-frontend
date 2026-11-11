@@ -24,6 +24,7 @@ export interface InterviewQuestionDto {
   answer?: {
     id: string;
     transcriptText?: string | null;
+    audioFileUrl?: string | null;
     audioAnalysis?: {
       speechPaceWpm?: number;
       fillerWordsCount?: number;
