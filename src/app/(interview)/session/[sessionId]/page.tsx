@@ -13,6 +13,8 @@ import type { InterviewQuestionDto, InterviewSessionDto } from "@/features/backe
 import { ROUTES } from "@/lib/constants";
 import { ApiClientError } from "@/lib/api-client";
 import type { RealTimeMetrics } from "@/types/api.types";
+import { useLiveAudioAnalytics } from "@/features/realtime/hooks/useLiveAudioAnalytics";
+import { useDebounce } from "@/hooks/useDebounce";
 
 function firstUnanswered(questions: InterviewQuestionDto[]) {
   return questions.find((q) => !q.answer) ?? null;
@@ -44,6 +46,19 @@ export default function InterviewSessionPage() {
   const chunksRef = useRef<Blob[]>([]);
   const [recording, setRecording] = useState(false);
   const recordStartRef = useRef<number | null>(null);
+  const liveStartedRef = useRef(false);
+
+  const {
+    metrics: liveMetrics,
+    wsState,
+    liveActive,
+    startLiveAnalytics,
+    stopLiveAnalytics,
+    pushTranscriptDraft,
+    pushTranscriptFinal,
+  } = useLiveAudioAnalytics(sessionId);
+
+  const debouncedAnswer = useDebounce(answerText, 450);
 
   const loadSession = useCallback(async () => {
     setLoading(true);
@@ -92,6 +107,33 @@ export default function InterviewSessionPage() {
   useEffect(() => {
     loadSession();
   }, [loadSession]);
+
+  useEffect(() => {
+    if (loading || liveStartedRef.current) return;
+    liveStartedRef.current = true;
+    startLiveAnalytics().catch(() => {
+      console.warn("Live audio analytics could not start (mic permission or WS).");
+    });
+    return () => {
+      stopLiveAnalytics();
+    };
+  }, [loading, startLiveAnalytics, stopLiveAnalytics]);
+
+  useEffect(() => {
+    if (debouncedAnswer.trim()) {
+      pushTranscriptDraft(debouncedAnswer);
+    }
+  }, [debouncedAnswer, pushTranscriptDraft]);
+
+  useEffect(() => {
+    if (!liveMetrics) return;
+    setMetrics((prev) => ({
+      wpm: liveMetrics.currentWPM ?? prev.wpm,
+      fillerPct: liveMetrics.fillerWords ?? prev.fillerPct,
+      hesitation: liveMetrics.hesitationSpikes ?? prev.hesitation,
+      confidence: Math.round((liveMetrics.volumeLevel ?? 0) * 100) || prev.confidence,
+    }));
+  }, [liveMetrics]);
 
   const applyMetrics = (rt?: RealTimeMetrics, raw?: Record<string, unknown>) => {
     const m = raw || {};
@@ -148,6 +190,10 @@ export default function InterviewSessionPage() {
               ? (Date.now() - recordStartRef.current) / 1000
               : undefined;
         }
+      }
+
+      if (answerText.trim()) {
+        pushTranscriptFinal(answerText);
       }
 
       const result = await submitAnswer(activeQuestion.id, {
@@ -234,7 +280,13 @@ export default function InterviewSessionPage() {
         <Link href={ROUTES.PRACTICE} className="text-sm text-[var(--color-text-secondary)] hover:text-white">
           ← Back
         </Link>
-        <span className="font-mono text-xs text-[var(--color-brand-400)]">{session?.targetRole}</span>
+        <div className="flex items-center gap-3 font-mono text-[10px] uppercase tracking-widest text-[var(--color-text-tertiary)]">
+          <span>{session?.targetRole}</span>
+          <span className={wsState === "connected" ? "text-[var(--color-brand-400)]" : "text-[var(--color-warning-400)]"}>
+            WS {wsState}
+          </span>
+          {liveActive && <span className="text-[var(--color-danger-400)]">● LIVE</span>}
+        </div>
         <div className="flex gap-3">
           <Link
             href={ROUTES.INTERVIEW_CANVAS(sessionId)}

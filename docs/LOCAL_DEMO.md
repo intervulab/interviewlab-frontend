@@ -32,8 +32,10 @@ cd interviewlab-system-canvas && npm install && npm run dev
 
 1. http://localhost:3000/register  
 2. Practice → Initialize Session  
-3. Answer questions (text and/or record)  
+3. Answer questions (text and/or record) — **live metrics** stream over `ws://localhost:4000/ws` → Component 5  
 4. System Design → draw → Submit design  
 5. End & Report  
+
+Allow microphone when prompted on the session page (AudioWorklet + VAD → binary PCM chunks).
 
 CLI spine: `backend/scripts/demo-spine.sh`
