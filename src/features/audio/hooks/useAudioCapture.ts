@@ -27,7 +27,16 @@ export function useAudioCapture(options: UseAudioCaptureOptions = {}) {
     chunkDurationMs = AUDIO_CONFIG.CHUNK_DURATION_MS,
   } = options;
 
-  const audioStore = useAudioStore();
+  const setAudioState = useAudioStore((s) => s.setState);
+  const setAvailableDevices = useAudioStore((s) => s.setAvailableDevices);
+  const setSelectedDevice = useAudioStore((s) => s.setSelectedDevice);
+  const selectedDevice = useAudioStore((s) => s.selectedDevice);
+  const state = useAudioStore((s) => s.state);
+  const isMuted = useAudioStore((s) => s.isMuted);
+  const volume = useAudioStore((s) => s.volume);
+  const availableDevices = useAudioStore((s) => s.availableDevices);
+  const toggleMute = useAudioStore((s) => s.toggleMute);
+
   const streamRef = useRef<MediaStream | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const workletNodeRef = useRef<AudioWorkletNode | null>(null);
@@ -36,7 +45,7 @@ export function useAudioCapture(options: UseAudioCaptureOptions = {}) {
    * Request microphone permissions and enumerate devices.
    */
   const requestPermission = useCallback(async () => {
-    audioStore.setState("requesting");
+    setAudioState("requesting");
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
@@ -58,20 +67,20 @@ export function useAudioCapture(options: UseAudioCaptureOptions = {}) {
           label: d.label || `Microphone ${d.deviceId.slice(0, 4)}`,
           kind: "audioinput" as const,
         }));
-      audioStore.setAvailableDevices(audioInputs);
+      setAvailableDevices(audioInputs);
 
-      if (audioInputs.length > 0 && !audioStore.selectedDevice) {
-        audioStore.setSelectedDevice(audioInputs[0]);
+      if (audioInputs.length > 0 && !selectedDevice) {
+        setSelectedDevice(audioInputs[0]);
       }
 
-      audioStore.setState("ready");
+      setAudioState("ready");
       return stream;
     } catch (error) {
       console.error("Microphone permission denied:", error);
-      audioStore.setState("error");
+      setAudioState("error");
       throw error;
     }
-  }, [sampleRate, audioStore]);
+  }, [sampleRate, selectedDevice, setAudioState, setAvailableDevices, setSelectedDevice]);
 
   /**
    * Start recording and streaming audio chunks.
@@ -138,8 +147,8 @@ export function useAudioCapture(options: UseAudioCaptureOptions = {}) {
       processor.connect(audioContext.destination);
     }
 
-    audioStore.setState("recording");
-  }, [requestPermission, onChunk, sampleRate, chunkDurationMs, audioStore]);
+    setAudioState("recording");
+  }, [requestPermission, onChunk, sampleRate, chunkDurationMs, setAudioState]);
 
   /**
    * Stop recording and release all resources.
@@ -160,26 +169,29 @@ export function useAudioCapture(options: UseAudioCaptureOptions = {}) {
       streamRef.current = null;
     }
 
-    audioStore.setState("idle");
-  }, [audioStore]);
+    setAudioState("idle");
+  }, [setAudioState]);
 
-  // Cleanup on unmount
+  const stopRecordingRef = useRef(stopRecording);
+  stopRecordingRef.current = stopRecording;
+
+  // Cleanup on unmount only — avoid re-running when stopRecording identity changes.
   useEffect(() => {
     return () => {
-      stopRecording();
+      stopRecordingRef.current();
     };
-  }, [stopRecording]);
+  }, []);
 
   return {
-    state: audioStore.state,
-    isMuted: audioStore.isMuted,
-    volume: audioStore.volume,
-    selectedDevice: audioStore.selectedDevice,
-    availableDevices: audioStore.availableDevices,
+    state,
+    isMuted,
+    volume,
+    selectedDevice,
+    availableDevices,
     requestPermission,
     startRecording,
     stopRecording,
-    toggleMute: audioStore.toggleMute,
-    setSelectedDevice: audioStore.setSelectedDevice,
+    toggleMute,
+    setSelectedDevice,
   };
 }
