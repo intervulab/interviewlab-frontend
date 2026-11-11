@@ -1,5 +1,8 @@
 # Local full-stack demo
 
+**Full install runbook (clone → verify → automate with an LLM):**  
+`backend/docs/LOCAL_DEPLOYMENT.md` on branch `integration/demo`.
+
 ## Prerequisites
 
 - Docker (Postgres + optional Python containers)
