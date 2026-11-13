@@ -60,7 +60,10 @@ export default function InterviewReportPage() {
   const answerTranscripts = (report.detailedFeedback?.answerTranscripts ?? []) as Array<{
     orderIndex?: number;
     questionPreview?: string;
+    questionText?: string;
     transcriptText?: string | null;
+    feedbackText?: string | null;
+    technicalScore?: number | null;
     voiceRecordedSeconds?: number | null;
     transcriptionPending?: boolean;
   }>;
@@ -132,29 +135,49 @@ export default function InterviewReportPage() {
         {answerTranscripts.length > 0 && (
           <div className="border-t border-[var(--color-border-subtle)] pt-6 space-y-4">
             <h3 className="text-sm font-bold uppercase tracking-widest text-[var(--color-brand-400)]">
-              Your spoken / typed answers
+              Questions, answers &amp; feedback
             </h3>
             {answerTranscripts.map((row, i) => (
               <blockquote
                 key={`${row.orderIndex ?? i}-${i}`}
-                className="rounded-xl border border-[var(--color-border-default)] bg-[var(--color-surface-1)] p-4 text-sm leading-relaxed text-[var(--color-text-primary)]"
+                className="rounded-xl border border-[var(--color-border-default)] bg-[var(--color-surface-1)] p-6 text-sm leading-relaxed text-[var(--color-text-primary)] space-y-4"
               >
-                {row.questionPreview && (
-                  <p className="mb-2 text-xs text-[var(--color-text-tertiary)]">
-                    Q{row.orderIndex ?? i + 1}: {row.questionPreview}
-                    {row.questionPreview.length >= 120 ? "…" : ""}
+                <p className="text-xs font-bold uppercase tracking-widest text-[var(--color-text-tertiary)]">
+                  Question {row.orderIndex ?? i + 1}
+                  {row.technicalScore != null && (
+                    <span className="ml-2 font-normal text-[var(--color-brand-400)]">
+                      Score {(row.technicalScore / 10).toFixed(1)}/10
+                    </span>
+                  )}
+                </p>
+                {(row.questionText || row.questionPreview) && (
+                  <p className="text-[var(--color-text-secondary)]">
+                    {row.questionText || row.questionPreview}
                   </p>
                 )}
-                {row.transcriptText ? (
-                  <p className="whitespace-pre-wrap">{row.transcriptText}</p>
-                ) : (
-                  <p className="text-[var(--color-text-tertiary)] italic">
-                    {row.transcriptionPending
-                      ? `Voice answer recorded${
-                          row.voiceRecordedSeconds != null ? ` (${row.voiceRecordedSeconds}s)` : ""
-                        }. Transcript was not captured — start a new practice session and submit again to populate this section.`
-                      : "No transcript stored for this question."}
+                <div className="rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-surface-0)] px-4 py-3">
+                  <p className="text-[10px] uppercase tracking-wide text-[var(--color-text-tertiary)] mb-2">
+                    Your answer
                   </p>
+                  {row.transcriptText ? (
+                    <p className="whitespace-pre-wrap">{row.transcriptText}</p>
+                  ) : (
+                    <p className="text-[var(--color-text-tertiary)] italic">
+                      {row.transcriptionPending
+                        ? `Voice answer recorded${
+                            row.voiceRecordedSeconds != null ? ` (${row.voiceRecordedSeconds}s)` : ""
+                          }. Transcript was not captured.`
+                        : "No transcript stored for this question."}
+                    </p>
+                  )}
+                </div>
+                {row.feedbackText && (
+                  <div className="rounded-lg border border-[var(--color-brand-500)]/30 bg-[var(--color-brand-500)]/10 px-4 py-3">
+                    <p className="text-[10px] uppercase tracking-wide text-[var(--color-brand-400)] mb-2">
+                      Interviewer feedback
+                    </p>
+                    <p className="whitespace-pre-wrap text-[var(--color-text-primary)]">{row.feedbackText}</p>
+                  </div>
                 )}
               </blockquote>
             ))}

@@ -46,7 +46,10 @@ export default function LandingPage() {
               Sign In
             </Link>
             <Link href={ROUTES.REGISTER}>
-              <MagneticButton className="bg-white text-black px-6 py-2.5 rounded-lg text-sm font-bold uppercase tracking-widest transition-colors hover:bg-[var(--color-brand-500)] shadow-[0_0_15px_oklch(0.95_0.01_270_/_0.3)]">
+              <MagneticButton
+                ctaInset="nav"
+                className="bg-white text-black rounded-full text-sm font-bold uppercase tracking-wide transition-colors hover:bg-[var(--color-brand-500)] shadow-[0_0_15px_oklch(0.95_0.01_270_/_0.3)]"
+              >
                 Initialize
               </MagneticButton>
             </Link>
@@ -154,7 +157,8 @@ export default function LandingPage() {
           >
             <Link href={ROUTES.REGISTER}>
               <MagneticButton
-                className="bg-[var(--color-brand-600)] text-white px-10 py-5 rounded-xl text-lg font-bold uppercase tracking-widest shadow-[0_0_30px_oklch(0.75_0.22_140_/_0.4)] hover:bg-[var(--color-brand-500)] transition-colors glow-pulse"
+                ctaInset="hero"
+                className="bg-[var(--color-brand-600)] text-white rounded-full text-lg font-bold uppercase tracking-wide shadow-[0_0_30px_oklch(0.75_0.22_140_/_0.4)] hover:bg-[var(--color-brand-500)] transition-colors glow-pulse"
                 magneticStrength={0.3}
               >
                 Start For Free
@@ -162,7 +166,8 @@ export default function LandingPage() {
             </Link>
             <Link href="#features">
               <MagneticButton
-                className="border border-[var(--color-border-strong)] text-[var(--color-text-secondary)] px-10 py-5 rounded-xl text-lg font-bold uppercase tracking-widest hover:text-white hover:border-white transition-colors"
+                ctaInset="hero"
+                className="border border-[var(--color-border-strong)] text-[var(--color-text-secondary)] rounded-full text-lg font-bold uppercase tracking-wide hover:text-white hover:border-white transition-colors"
                 magneticStrength={0.2}
               >
                 See How It Works
@@ -579,7 +584,8 @@ export default function LandingPage() {
               <div className="mt-14 flex justify-center">
                 <Link href={ROUTES.REGISTER}>
                   <MagneticButton
-                    className="bg-white text-black px-14 py-7 rounded-2xl text-xl font-bold uppercase tracking-widest shadow-[0_0_40px_rgba(255,255,255,0.2)] hover:bg-[var(--color-brand-500)] hover:text-white transition-colors"
+                    ctaInset="hero"
+                    className="bg-white text-black rounded-2xl text-xl font-bold uppercase tracking-wide shadow-[0_0_40px_rgba(255,255,255,0.2)] hover:bg-[var(--color-brand-500)] hover:text-white transition-colors"
                     magneticStrength={0.4}
                   >
                     Initialize Terminal

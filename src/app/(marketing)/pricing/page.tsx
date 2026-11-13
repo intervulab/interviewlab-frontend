@@ -62,7 +62,10 @@ export default function PricingPage() {
               Sign In
             </Link>
             <Link href={ROUTES.REGISTER}>
-              <MagneticButton className="bg-[var(--color-brand-600)] text-white px-6 py-2.5 rounded-lg text-sm font-bold uppercase tracking-widest transition-colors hover:bg-[var(--color-brand-500)] shadow-[0_0_15px_oklch(0.75_0.22_140_/_0.3)]">
+              <MagneticButton
+                ctaInset="nav"
+                className="bg-[var(--color-brand-600)] text-white rounded-full text-sm font-bold uppercase tracking-wide transition-colors hover:bg-[var(--color-brand-500)] shadow-[0_0_15px_oklch(0.75_0.22_140_/_0.3)]"
+              >
                 Initialize
               </MagneticButton>
             </Link>

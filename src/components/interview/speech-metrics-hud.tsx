@@ -73,7 +73,7 @@ export function SpeechMetricsHud({
   return (
     <div className="grid grid-cols-2 gap-4">
       {metrics.map((m) => (
-        <div key={m.label} className="glass flex flex-col items-center justify-center rounded-xl p-4 text-center">
+        <div key={m.label} className="glass flex flex-col items-center justify-center rounded-xl px-4 py-5 text-center">
           <div className="w-16 h-16">
             <CircularProgressbar
               value={m.value}

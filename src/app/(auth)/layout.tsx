@@ -6,7 +6,7 @@ export default function AuthLayout({
   return (
     <div className="relative flex min-h-dvh">
       {/* ── Left: Auth Form ── */}
-      <div className="flex w-full flex-col items-center justify-center px-6 lg:w-1/2">
+      <div className="flex w-full flex-col items-center justify-center px-8 py-12 sm:px-12 lg:w-1/2 lg:px-16 xl:px-20">
         {children}
       </div>
 

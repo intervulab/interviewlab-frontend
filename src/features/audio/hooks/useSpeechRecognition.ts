@@ -85,14 +85,17 @@ export function useSpeechRecognition() {
     const attachHandlers = (recognition: SpeechRecognitionLike) => {
       recognition.onresult = (event: SpeechRecognitionEvent) => {
         let interim = "";
-        for (let i = event.resultIndex; i < event.results.length; i += 1) {
+        const finals: string[] = [];
+        for (let i = 0; i < event.results.length; i += 1) {
           const piece = event.results[i][0]?.transcript ?? "";
           if (event.results[i].isFinal) {
-            if (piece.trim()) finalPartsRef.current.push(piece.trim());
+            if (piece.trim()) finals.push(piece.trim());
           } else {
             interim += piece;
           }
         }
+        // Replace finals each event — avoids duplicates when continuous mode restarts.
+        finalPartsRef.current = finals;
         setInterimTranscript(interim.trim());
         syncFinalState();
       };
@@ -102,12 +105,11 @@ export function useSpeechRecognition() {
         if (code === "no-speech" || code === "aborted") return;
         if (code === "network") {
           setSttError(
-            "Browser captions need internet (Brave/Google). Keep recording — we transcribe on the server when you submit.",
+            "Browser captions unavailable in this browser — switching to server transcription while you record.",
           );
         } else {
           setSttError(`Speech recognition error: ${code}`);
         }
-        wantListenRef.current = false;
         setListening(false);
       };
 

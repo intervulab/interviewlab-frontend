@@ -6,6 +6,10 @@ import { useParams, useRouter } from "next/navigation";
 import { AIAvatar } from "@/components/interview/ai-avatar";
 import { AudioWaveform } from "@/components/interview/audio-waveform";
 import { TranscriptPanel } from "@/components/interview/transcript-panel";
+import {
+  buildSessionTranscript,
+  questionProgressLabel,
+} from "@/features/interview/build-session-transcript";
 import { SpeechMetricsHud } from "@/components/interview/speech-metrics-hud";
 import { MagneticButton } from "@/components/shared/magnetic-button";
 import { getSession, submitAnswer, generateReport } from "@/features/backend/api";
@@ -15,6 +19,12 @@ import { ApiClientError } from "@/lib/api-client";
 import type { RealTimeMetrics } from "@/types/api.types";
 import { useLiveAudioAnalytics } from "@/features/realtime/hooks/useLiveAudioAnalytics";
 import { useSpeechRecognition } from "@/features/audio/hooks/useSpeechRecognition";
+import { useServerLiveCaptions } from "@/features/audio/hooks/useServerLiveCaptions";
+import { hesitationSpikesToHudScore } from "@/features/audio/hesitation-score";
+import {
+  latestAnswerMetrics,
+  metricsFromAnalysis,
+} from "@/features/audio/metrics-from-analysis";
 import { useDebounce } from "@/hooks/useDebounce";
 
 function firstUnanswered(questions: InterviewQuestionDto[]) {
@@ -29,7 +39,6 @@ export default function InterviewSessionPage() {
   const [session, setSession] = useState<InterviewSessionDto | null>(null);
   const [activeQuestion, setActiveQuestion] = useState<InterviewQuestionDto | null>(null);
   const [answerText, setAnswerText] = useState("");
-  const [feedback, setFeedback] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -38,10 +47,8 @@ export default function InterviewSessionPage() {
     fillerPct: 0,
     hesitation: 0,
     confidence: 0,
+    answerDurationSecs: 0,
   });
-  const [transcript, setTranscript] = useState<
-    Array<{ id: string; speaker: "ai" | "candidate"; text: string; isFinal: boolean }>
-  >([]);
 
   const mediaRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -62,8 +69,32 @@ export default function InterviewSessionPage() {
 
   const speech = useSpeechRecognition();
 
+  const getRecordingBlob = useCallback(() => {
+    if (!chunksRef.current.length) return null;
+    const mime = mediaRef.current?.mimeType || "audio/webm";
+    return new Blob(chunksRef.current, { type: mime });
+  }, []);
+
+  const serverCaptionsEnabled =
+    recording && (!speech.supported || Boolean(speech.sttError) || !speech.listening);
+
+  const { serverCaption, serverPending, serverUnavailable } = useServerLiveCaptions(
+    sessionId,
+    recording,
+    getRecordingBlob,
+    serverCaptionsEnabled
+  );
+
+  const mergedVoiceTranscript = useMemo(() => {
+    const browser = speech.combinedTranscript.trim();
+    const server = serverCaption.trim();
+    if (browser && server) {
+      return browser.length >= server.length ? browser : server;
+    }
+    return browser || server;
+  }, [speech.combinedTranscript, serverCaption]);
+
   const debouncedAnswer = useDebounce(answerText, 450);
-  const debouncedVoice = useDebounce(speech.combinedTranscript, 450);
 
   const loadSession = useCallback(async () => {
     setLoading(true);
@@ -73,41 +104,9 @@ export default function InterviewSessionPage() {
       setSession(data);
       const next = firstUnanswered(data.questions);
       setActiveQuestion(next);
-      const entries = data.questions.flatMap((q) => {
-        const list: typeof transcript = [
-          {
-            id: `q-${q.id}`,
-            speaker: "ai",
-            text: q.questionText,
-            isFinal: true,
-          },
-        ];
-        if (q.answer?.transcriptText) {
-          list.push({
-            id: `a-${q.id}`,
-            speaker: "candidate",
-            text: q.answer.transcriptText,
-            isFinal: true,
-          });
-        } else if (q.answer?.audioFileUrl) {
-          list.push({
-            id: `a-${q.id}`,
-            speaker: "candidate",
-            text: "Voice answer (submitted)",
-            isFinal: true,
-          });
-        }
-        return list;
-      });
-      setTranscript(entries);
-      if (next) {
-        setTranscript((prev) => {
-          if (prev.some((e) => e.id === `q-${next.id}`)) return prev;
-          return [
-            ...prev,
-            { id: `q-${next.id}`, speaker: "ai", text: next.questionText, isFinal: true },
-          ];
-        });
+      const raw = latestAnswerMetrics(data.questions);
+      if (raw) {
+        setMetrics(metricsFromAnalysis(null, raw));
       }
     } catch (err) {
       setError(err instanceof ApiClientError ? err.message : "Failed to load session");
@@ -122,19 +121,19 @@ export default function InterviewSessionPage() {
 
   useEffect(() => {
     if (!recording) return;
-    const merged = [typedBeforeRecordRef.current, speech.combinedTranscript]
+    const merged = [typedBeforeRecordRef.current, mergedVoiceTranscript]
       .filter(Boolean)
       .join(" ")
       .trim();
     if (merged) setAnswerText(merged);
-  }, [recording, speech.combinedTranscript]);
+  }, [recording, mergedVoiceTranscript]);
 
   useEffect(() => {
-    const draft = [debouncedAnswer, debouncedVoice].filter(Boolean).join(" ").trim();
+    const draft = debouncedAnswer.trim();
     if (draft) {
       pushTranscriptDraft(draft);
     }
-  }, [debouncedAnswer, debouncedVoice, pushTranscriptDraft]);
+  }, [debouncedAnswer, pushTranscriptDraft]);
 
   useEffect(() => {
     if (!liveMetrics) return;
@@ -143,17 +142,12 @@ export default function InterviewSessionPage() {
       fillerPct: liveMetrics.fillerWords ?? prev.fillerPct,
       hesitation: liveMetrics.hesitationSpikes ?? prev.hesitation,
       confidence: Math.round((liveMetrics.volumeLevel ?? 0) * 100) || prev.confidence,
+      answerDurationSecs: prev.answerDurationSecs,
     }));
   }, [liveMetrics]);
 
   const applyMetrics = (rt?: RealTimeMetrics, raw?: Record<string, unknown>) => {
-    const m = raw || {};
-    setMetrics({
-      wpm: rt?.currentWPM ?? (m.averageWPM as number) ?? (m.speechPaceWpm as number) ?? 0,
-      fillerPct: (m.fillerWordPercentage as number) ?? rt?.fillerWords ?? 0,
-      hesitation: rt?.hesitationSpikes ?? (m.hesitationCount as number) ?? 0,
-      confidence: (m.confidenceScore as number) ?? (m.clarityScore as number) ?? 0,
-    });
+    setMetrics(metricsFromAnalysis(rt, raw));
   };
 
   function finalizeRecordingChunks(): Blob | undefined {
@@ -218,46 +212,32 @@ export default function InterviewSessionPage() {
   }
 
   function buildTranscriptPayload() {
-    return [
-      answerText.trim(),
-      speech.combinedTranscript.trim(),
-      speech.finalTranscript.trim(),
-    ]
-      .filter(Boolean)
-      .join(" ")
-      .trim();
+    const fromField = answerText.trim();
+    if (fromField) return fromField;
+    return mergedVoiceTranscript.trim();
   }
 
-  function appendCandidateTranscript(text: string, isFinal = true) {
-    const trimmed = text.trim();
-    if (!trimmed) return;
-    pushTranscriptFinal(trimmed);
-    setTranscript((prev) => [
-      ...prev.filter((e) => e.id !== "voice-live"),
-      {
-        id: `a-${Date.now()}`,
-        speaker: "candidate",
-        text: trimmed,
-        isFinal,
-      },
-    ]);
-  }
+  const liveCaption = useMemo(() => answerText.trim(), [answerText]);
 
-  const transcriptForPanel = useMemo(() => {
-    if (!recording) return transcript;
-    const live = [answerText, speech.combinedTranscript].filter(Boolean).join(" ").trim();
-    if (!live) return transcript;
-    return [
-      ...transcript,
-      { id: "voice-live", speaker: "candidate" as const, text: live, isFinal: false },
-    ];
-  }, [transcript, recording, answerText, speech.combinedTranscript]);
+  const progress = useMemo(
+    () => questionProgressLabel(session?.questions ?? [], activeQuestion),
+    [session?.questions, activeQuestion]
+  );
+
+  const transcriptForPanel = useMemo(
+    () =>
+      buildSessionTranscript(
+        session?.questions ?? [],
+        activeQuestion?.id ?? null,
+        recording || speech.listening ? liveCaption : undefined
+      ),
+    [session?.questions, activeQuestion?.id, recording, speech.listening, liveCaption]
+  );
 
   async function handleSubmit() {
     if (!activeQuestion) return;
     setSubmitting(true);
     setError(null);
-    setFeedback(null);
     try {
       let audioBlob: Blob | undefined = pendingAudioRef.current?.blob;
       let durationSeconds: number | undefined = pendingAudioRef.current?.durationSeconds;
@@ -295,23 +275,10 @@ export default function InterviewSessionPage() {
         durationSeconds,
       });
 
-      const savedText =
-        result.answer?.transcriptText?.trim() || mergedTranscript || "";
-      if (savedText) {
-        appendCandidateTranscript(savedText);
-      } else if (audioBlob) {
-        const secs =
-          durationSeconds != null ? ` (${Math.round(durationSeconds)}s)` : "";
-        appendCandidateTranscript(`Voice answer recorded${secs}`);
-      }
-
       applyMetrics(
         result.realTimeMetrics,
         result.answer?.audioAnalysis?.rawMetricsJson as Record<string, unknown> | undefined
       );
-
-      const evalText = result.agent?.evaluation?.feedback;
-      if (evalText) setFeedback(evalText);
 
       setAnswerText("");
       speech.resetTranscript();
@@ -329,12 +296,6 @@ export default function InterviewSessionPage() {
         setSession(refreshed);
         const next = firstUnanswered(refreshed.questions);
         setActiveQuestion(next);
-        if (next) {
-          setTranscript((prev) => [
-            ...prev,
-            { id: `q-${next.id}`, speaker: "ai", text: next.questionText, isFinal: true },
-          ]);
-        }
       } else {
         await loadSession();
       }
@@ -400,21 +361,42 @@ export default function InterviewSessionPage() {
       )}
 
       <div className="flex flex-1 overflow-hidden">
-        <div className="flex flex-1 flex-col items-center justify-center p-8 gap-8">
+        <div className="flex flex-1 flex-col items-center justify-center p-8 gap-6 overflow-y-auto">
           <AIAvatar isSpeaking={!activeQuestion} isProcessing={submitting} />
-          <h2 className="max-w-3xl text-center text-2xl font-bold leading-snug">{questionText}</h2>
-          {feedback && (
-            <p className="max-w-2xl rounded-xl border border-[var(--color-brand-500)]/30 bg-[var(--color-brand-500)]/10 px-4 py-3 text-sm">
-              {feedback}
+          <div className="text-center space-y-2">
+            <p className="inline-flex rounded-full border border-[var(--color-brand-500)]/40 bg-[var(--color-brand-500)]/10 px-5 py-2 text-sm font-bold tracking-wide text-[var(--color-brand-300)]">
+              {progress.label}
             </p>
+            <h2 className="max-w-3xl text-center text-2xl font-bold leading-snug px-4">{questionText}</h2>
+          </div>
+          {(recording || speech.listening || liveCaption) && (
+            <div className="w-full max-w-2xl rounded-xl border border-[var(--color-brand-500)]/50 bg-[var(--color-surface-1)] px-5 py-4 shadow-inner">
+              <p className="text-[10px] font-mono uppercase tracking-widest text-[var(--color-brand-400)] mb-2">
+                {speech.listening
+                  ? "● Live captions"
+                  : serverCaption
+                    ? "● Server captions"
+                    : serverPending
+                      ? "● Transcribing…"
+                      : recording
+                        ? "Recording…"
+                        : "Answer draft"}
+              </p>
+              <p className="text-sm leading-relaxed text-[var(--color-text-primary)] whitespace-pre-wrap min-h-[3rem]">
+                {liveCaption ||
+                  (serverPending
+                    ? "Listening… captions appear in a few seconds (local Whisper on the server)."
+                    : "Speak clearly — your words will appear here.")}
+              </p>
+            </div>
           )}
-          {(recording || speech.listening) && (
-            <p className="max-w-2xl w-full text-xs font-mono uppercase tracking-widest text-[var(--color-brand-400)]">
-              {speech.listening ? "● Live captions (browser STT)" : "Processing speech…"}
-            </p>
-          )}
-          {speech.sttError && (
+          {speech.sttError && !serverCaption && !serverPending && serverUnavailable && (
             <p className="max-w-2xl w-full text-xs text-[var(--color-warning-400)]">{speech.sttError}</p>
+          )}
+          {speech.sttError && serverCaptionsEnabled && !serverUnavailable && (
+            <p className="max-w-2xl w-full text-xs text-[var(--color-text-secondary)]">
+              {speech.sttError}
+            </p>
           )}
           <textarea
             value={answerText}
@@ -425,27 +407,28 @@ export default function InterviewSessionPage() {
                 : "Type your answer (optional if you record audio)…"
             }
             rows={5}
-            className="w-full max-w-2xl rounded-xl border border-[var(--color-border-default)] bg-[var(--color-surface-1)] p-4 text-sm min-h-[120px]"
+            className="w-full max-w-2xl rounded-xl border border-[var(--color-border-default)] bg-[var(--color-surface-1)] px-5 py-4 text-sm min-h-[120px]"
           />
           <MagneticButton
             onClick={() => {
               if (liveActive) stopLiveAnalytics();
               else startLiveAnalytics().catch(() => setError("Could not start live audio metrics."));
             }}
-            className="text-xs px-4 py-2 rounded-lg border border-[var(--color-border-default)] text-[var(--color-text-secondary)]"
+            className="text-sm px-6 py-2.5 rounded-xl border border-[var(--color-border-default)] text-[var(--color-text-secondary)]"
           >
             {liveActive ? "Pause live metrics" : "Enable live metrics (uses mic)"}
           </MagneticButton>
-          <div className="flex flex-wrap items-center justify-center gap-4">
+          <div className="flex flex-wrap items-center justify-center gap-5 w-full max-w-2xl">
             <MagneticButton
               onClick={toggleRecording}
-              className={`px-6 py-3 rounded-xl text-sm font-bold ${recording ? "bg-[var(--color-danger-600)]" : "bg-[var(--color-brand-600)]"} text-white`}
+              className={`flex-1 min-w-[11rem] px-8 py-4 rounded-xl text-base font-bold ${recording ? "bg-[var(--color-danger-600)]" : "bg-[var(--color-brand-600)]"} text-white shadow-md`}
             >
               {recording ? "Stop recording" : "Record answer"}
             </MagneticButton>
             <MagneticButton
               onClick={handleSubmit}
-              className="px-6 py-3 rounded-xl bg-[var(--color-accent-600)] text-white text-sm font-bold disabled:opacity-50"
+              disabled={submitting}
+              className="flex-1 min-w-[11rem] px-8 py-4 rounded-xl bg-[var(--color-accent-500)] text-white text-base font-bold disabled:opacity-50 shadow-md ring-2 ring-[var(--color-accent-400)]/30"
             >
               {submitting ? "Submitting…" : "Submit answer"}
             </MagneticButton>
@@ -453,15 +436,20 @@ export default function InterviewSessionPage() {
           <AudioWaveform isListening={recording} audioData={audioLevel} barCount={32} />
         </div>
 
-        <div className="w-[380px] border-l border-[var(--color-border-subtle)] p-6 space-y-6">
-          <SpeechMetricsHud
-            wpm={metrics.wpm}
-            fillerWordPercent={metrics.fillerPct}
-            hesitationScore={Math.min(100, metrics.hesitation * 10)}
-            confidenceScore={metrics.confidence}
-          />
-          <TranscriptPanel entries={transcriptForPanel} />
-        </div>
+        <aside className="flex w-[min(100%,24rem)] shrink-0 flex-col min-h-0 border-l border-[var(--color-border-subtle)] p-6 gap-6">
+          <div className="shrink-0">
+            <SpeechMetricsHud
+              wpm={metrics.wpm}
+              fillerWordPercent={metrics.fillerPct}
+              hesitationScore={hesitationSpikesToHudScore(
+                metrics.hesitation,
+                metrics.answerDurationSecs
+              )}
+              confidenceScore={metrics.confidence}
+            />
+          </div>
+          <TranscriptPanel entries={transcriptForPanel} className="min-h-[280px]" />
+        </aside>
       </div>
     </div>
   );

@@ -30,6 +30,7 @@ export async function createSession(body: {
   title: string;
   targetRole: string;
   resumeId?: string;
+  questionCount?: number;
 }) {
   const res = await api.post<BackendEnvelope<InterviewSessionDto>>("/sessions", body);
   return res.data;
@@ -38,6 +39,16 @@ export async function createSession(body: {
 export async function getSession(sessionId: string) {
   const res = await api.get<BackendEnvelope<InterviewSessionDto>>(`/sessions/${sessionId}`);
   return res.data;
+}
+
+export async function liveTranscribeSnippet(sessionId: string, audioBlob: Blob) {
+  const form = new FormData();
+  form.append("audio", audioBlob, "live.webm");
+  const res = await api.postForm<BackendEnvelope<{ text: string }>>(
+    `/sessions/${sessionId}/live-transcript`,
+    form
+  );
+  return res.data.text ?? "";
 }
 
 export async function submitAnswer(
